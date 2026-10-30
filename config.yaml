@@ -1,0 +1,38 @@
+# =============================================================
+#  Salesforce Mission Radar — configuration du scan
+# =============================================================
+
+# Mots-clés (chacun lancé sur chaque source, résultats fusionnés).
+keywords:
+  - "salesforce"
+
+# Pays interrogés sur LinkedIn (contrats, missions temporaires, temps partiel).
+linkedin_locations:
+  - "France"
+  - "Belgium"
+  - "Switzerland"
+  - "Luxembourg"
+  - "United Kingdom"
+  - "Netherlands"
+  - "Germany"
+  - "Canada"
+  - "European Union"
+
+# Sources actives (voir radar/sources/).
+sources:
+  - freework        # API, freelance natif + TJM — la plus riche
+  - wttj            # Welcome to the Jungle (Algolia)
+  - hellowork       # job board FR, filtre Freelance
+  - linkedin        # multi-pays, contrats / temporaire / temps partiel
+  - freelancermap   # projets IT freelance Europe (DE/CH/UK/Benelux)
+  - peopleperhour   # petites missions au forfait (UK/Europe)
+  - freelancer      # petites missions monde (API publique)
+  - codeur          # petites missions FR (RSS)
+  - jobgether       # remote freelance Europe / monde
+  - remoteok        # remote international
+
+# Offres conservées N jours après leur dernière apparition.
+retention_days: 45
+
+# URL publique du site (liens du flux RSS et de l'email).
+site_url: "https://evallee75.github.io/salesforce-mission-radar/"

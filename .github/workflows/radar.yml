@@ -1,0 +1,76 @@
+name: Radar quotidien
+
+on:
+  schedule:
+    # Deux passages par jour : être parmi les premiers à répondre compte beaucoup
+    # sur les missions courtes. Heures UTC (= 6h15 et 13h15 à Paris en hiver).
+    - cron: "15 5 * * *"
+    - cron: "15 12 * * *"
+  workflow_dispatch:      # lancement manuel depuis l'onglet Actions
+  push:                   # modif du front => redéploiement sans re-scanner
+    branches: [main]
+    paths:
+      - "site/**"
+      - "!site/data/**"
+      - ".github/workflows/radar.yml"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: radar
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Installer les dépendances
+        run: pip install -r requirements.txt
+
+      - name: Scanner les sources et régénérer les données
+        env:
+          # Email optionnel : sans SMTP_PASSWORD, rien n'est envoyé (le site suffit).
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          ALERT_TO: ${{ secrets.ALERT_TO }}
+        run: python -m radar
+
+      - name: Versionner les données
+        run: |
+          git config user.name "radar-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data site/data site/feed.xml site/feed-courtes.xml
+          git commit -m "Données : scan du $(date -u +'%Y-%m-%d %H:%M') UTC" || echo "Aucun changement"
+          git pull --rebase
+          git push
+
+  deploy:
+    needs: scan
+    # Tourne après un scan réussi, ou seul quand le scan est sauté (push du front).
+    if: always() && (needs.scan.result == 'success' || needs.scan.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main          # récupère les données que le job scan vient de pousser
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

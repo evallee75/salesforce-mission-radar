@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Salesforce Mission Radar</title>
+  <meta name="description" content="Missions freelance Salesforce agrégées chaque jour : France, Europe, international, missions courtes et temps partiel.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+  <link rel="alternate" type="application/rss+xml" title="Nouvelles missions" href="feed.xml">
+  <link rel="alternate" type="application/rss+xml" title="Missions courtes & temps partiel" href="feed-courtes.xml">
+  <link rel="preload" href="data/offers.json" as="fetch" crossorigin>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="brand">
+        <div class="logo">🎯</div>
+        <div>
+          <h1>Salesforce Mission Radar</h1>
+          <p>Les missions freelance Salesforce du jour : France, Europe, international, courtes et à temps partiel.</p>
+        </div>
+        <div class="updated" id="updated">Chargement…</div>
+      </div>
+      <div class="kpis" id="kpis"></div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="top">🎯 Top opportunités</button>
+      <button class="tab" data-tab="short">⚡ Courtes &amp; temps partiel<span class="count" id="c-short"></span></button>
+      <button class="tab" data-tab="intl">🌍 International<span class="count" id="c-intl"></span></button>
+      <button class="tab" data-tab="all">📋 Toutes<span class="count" id="c-all"></span></button>
+      <button class="tab" data-tab="pipeline">📌 Mon pipeline<span class="count" id="c-pipe"></span></button>
+      <button class="tab" data-tab="companies">🏢 Vivier</button>
+    </nav>
+
+    <section id="view-offers">
+      <div class="filters">
+        <input class="search" id="q" type="search" placeholder="Rechercher : CPQ, Marketing Cloud, Lyon, architecte…" autocomplete="off">
+        <div class="chips" id="zones"></div>
+        <select id="tjm" title="TJM minimum">
+          <option value="0">TJM : tous</option>
+          <option value="400">≥ 400 €</option>
+          <option value="500">≥ 500 €</option>
+          <option value="600">≥ 600 €</option>
+          <option value="700">≥ 700 €</option>
+          <option value="800">≥ 800 €</option>
+        </select>
+        <select id="source"><option value="">Toutes les sources</option></select>
+        <label class="toggle"><input type="checkbox" id="remote"> Full remote</label>
+        <label class="toggle"><input type="checkbox" id="noEsn"> Sans ESN</label>
+        <label class="toggle"><input type="checkbox" id="onlyNew"> Nouveautés</label>
+        <label class="toggle"><input type="checkbox" id="hideDone" checked> Masquer traitées</label>
+      </div>
+      <div class="result-line" id="resultLine"></div>
+      <div class="grid" id="grid">
+        <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+      </div>
+      <button class="btn more" id="more" hidden>Afficher plus</button>
+    </section>
+
+    <section id="view-pipeline" hidden>
+      <div class="toolbar">
+        <button class="btn" id="exportPipe">⬇️ Exporter</button>
+        <label class="btn">⬆️ Importer<input type="file" id="importPipe" accept="application/json" hidden></label>
+        <button class="btn" id="openSettings2">✉️ Modèles de message</button>
+        <span class="src">Le pipeline est enregistré dans ce navigateur. Exporte-le pour le sauvegarder ou le retrouver sur un autre appareil.</span>
+      </div>
+      <div class="funnel" id="funnel"></div>
+      <div class="board" id="board"></div>
+    </section>
+
+    <section id="view-companies" hidden>
+      <div class="filters">
+        <input class="search" id="cq" type="search" placeholder="Rechercher une entreprise…" autocomplete="off">
+        <label class="toggle"><input type="checkbox" id="cNoEsn" checked> Clients finaux seulement</label>
+        <label class="toggle"><input type="checkbox" id="cTjm"> TJM connu</label>
+        <select id="cMin"><option value="1">≥ 1 mission</option><option value="2">≥ 2 missions</option><option value="3">≥ 3 missions</option></select>
+        <button class="btn" id="exportCsv">⬇️ Export CSV</button>
+      </div>
+      <div class="result-line" id="cLine"></div>
+      <div class="table-wrap"><table id="ctable"></table></div>
+    </section>
+
+    <footer>
+      <div>
+        Mis à jour automatiquement chaque jour par GitHub Actions ·
+        <a href="feed.xml">RSS nouvelles missions</a> ·
+        <a href="feed-courtes.xml">RSS missions courtes</a> ·
+        <a href="#" id="openSettings">✉️ Modèles de message</a> ·
+        <a href="https://github.com/evallee75/salesforce-mission-radar">Code source</a>
+      </div>
+      <div class="src-status" id="srcStatus"></div>
+    </footer>
+  </main>
+
+  <dialog id="settings">
+    <form class="modal" method="dialog">
+      <h2>✉️ Modèles de message d'approche</h2>
+      <div class="hint">Copiés en un clic depuis chaque annonce. Variables : {titre} {entreprise} {tjm} {lieu} {nom}.</div>
+      <label for="myName">Ton nom</label>
+      <input id="myName" placeholder="Prénom Nom">
+      <label for="tplFr">Message en français</label>
+      <textarea id="tplFr"></textarea>
+      <label for="tplEn">Message en anglais (offres internationales)</label>
+      <textarea id="tplEn"></textarea>
+      <div class="actions">
+        <button class="btn" value="reset" id="resetTpl">Réinitialiser</button>
+        <button class="btn primary" value="save" id="saveTpl">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast"></div>
+  <script src="app.js" defer></script>
+</body>
+</html>
