@@ -21,8 +21,8 @@ from typing import Dict, List, Set, Tuple
 import yaml
 
 from . import companies
-from .classify import classify
-from .feed import write_feed
+from .classify import apply_ai, classify
+from .feed import format_rate, write_feed
 from .sources import REGISTRY, get_source
 from .text import is_permanent, is_salesforce_offer, scrub_contacts, strip_accents_lower
 
@@ -31,6 +31,16 @@ log = logging.getLogger("radar.pipeline")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STATE_PATH = os.path.join(ROOT, "data", "state.json")
 COMPANIES_PATH = os.path.join(ROOT, "data", "companies.json")
+# Analyse IA (routine Claude Code planifiée, voir ROUTINE.md) :
+#  - TEXTS_PATH : texte complet des annonces récentes, matière première de l'analyse ;
+#  - AI_QUEUE_PATH : annonces à analyser, régénéré à chaque publication ;
+#  - AI_PATH : résultats écrits par la routine, fusionnés à la publication.
+TEXTS_PATH = os.path.join(ROOT, "data", "texts.json")
+AI_QUEUE_PATH = os.path.join(ROOT, "data", "ai_queue.json")
+AI_PATH = os.path.join(ROOT, "data", "ai.json")
+AI_QUEUE_MAX = 60
+AI_QUEUE_DAYS = 10
+_TEXT_MAX = 5000
 SITE_DATA = os.path.join(ROOT, "site", "data")
 
 # En cas de doublon, on garde la source la plus riche (plus petit = prioritaire).
@@ -48,13 +58,20 @@ def load_config() -> dict:
         return yaml.safe_load(f) or {}
 
 
-def run() -> dict:
+def run(publish_only: bool = False) -> dict:
+    """Scan complet, ou seulement republication (`publish_only`) : utilisé après
+    que la routine IA a poussé de nouvelles analyses, sans re-scraper les sites."""
     cfg = load_config()
     started = time.time()
     state: Dict[str, dict] = _read_json(STATE_PATH, {})
+    texts: Dict[str, str] = _read_json(TEXTS_PATH, {})
     known = {oid for oid, o in state.items() if o.get("enriched")}
 
-    scraped, stats = _scrape(cfg, known)
+    if publish_only:
+        previous_meta = _read_json(os.path.join(SITE_DATA, "offers.json"), {}).get("meta", {})
+        scraped, stats = [], previous_meta.get("sources", {})
+    else:
+        scraped, stats = _scrape(cfg, known)
     today = date.today().isoformat()
     # first_seen est horodaté (le front marque « Nouveau » à l'heure près) ;
     # last_seen reste une date (purge et statut « actif » au jour près).
@@ -78,7 +95,9 @@ def run() -> dict:
         else:
             new_ids.append(o["id"])
         classify(o, prev)
-        o.pop("text", None)
+        text = scrub_contacts(o.pop("text", None) or "")
+        if len(text) > len(texts.get(o["id"], "")):
+            texts[o["id"]] = text[:_TEXT_MAX]
         o["snippet"] = scrub_contacts(o.get("snippet"))
         state[o["id"]] = o
 
@@ -87,13 +106,23 @@ def run() -> dict:
     state = {k: v for k, v in state.items() if v.get("last_seen", "") >= cutoff}
     # Re-score les offres non revues aujourd'hui : la fraîcheur évolue chaque jour.
     for o in state.values():
-        if o["last_seen"] != today:
+        if o["last_seen"] != today or publish_only:
             classify(o, dict(o))
 
     company_db = _update_companies(_read_json(COMPANIES_PATH, {}), state.values())
     offers = _publishable(state.values())
+    # L'analyse IA ne s'applique qu'aux copies publiées : l'état persistant reste
+    # celui des regex, et une analyse retirée de ai.json ne laisse aucune trace.
+    ai = _read_json(AI_PATH, {})
+    for o in offers:
+        apply_ai(o, ai.get(o["id"]))
+    offers.sort(key=lambda o: (o["active"], o["score"], o.get("published") or ""), reverse=True)
+    texts = {k: v for k, v in texts.items() if k in state}
+    _write_json(AI_QUEUE_PATH, _ai_queue(offers, ai, texts))
     meta = {
-        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "generated_at": (previous_meta.get("generated_at") if publish_only else None)
+        or datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "ai_analyzed": sum(1 for o in offers if o.get("ai")),
         "duration_s": round(time.time() - started, 1),
         "sources": stats,
         "source_labels": {name: cls.label for name, cls in REGISTRY.items()},
@@ -102,6 +131,7 @@ def run() -> dict:
     }
 
     _write_json(STATE_PATH, state)
+    _write_json(TEXTS_PATH, texts)
     _write_json(COMPANIES_PATH, company_db)
     _write_json(os.path.join(SITE_DATA, "offers.json"), {"meta": meta, "offers": offers})
     _write_json(os.path.join(SITE_DATA, "companies.json"),
@@ -113,11 +143,26 @@ def run() -> dict:
                "Salesforce Mission Radar — missions courtes & temps partiel",
                lambda o: o.get("short") or o.get("part_time"))
 
-    log.info("Scan terminé en %.0fs : %d offres publiées, %d nouvelles, %d entreprises.",
-             meta["duration_s"], len(offers), len(new_ids), len(company_db))
+    log.info("%s en %.0fs : %d offres publiées (%d analysées par l'IA), %d nouvelles, %d entreprises.",
+             "Publication" if publish_only else "Scan terminé", meta["duration_s"], len(offers),
+             meta["ai_analyzed"], len(new_ids), len(company_db))
     for name, s in stats.items():
         log.info("  %-14s %4d offres%s", name, s["count"], f"  ⚠ {s['error']}" if s.get("error") else "")
     return {"meta": meta, "offers": offers, "new_ids": set(new_ids)}
+
+
+# --- Analyse IA ---------------------------------------------------------------------------
+def _ai_queue(offers: List[dict], ai: Dict[str, dict], texts: Dict[str, str]) -> List[dict]:
+    """Annonces récentes et actives pas encore analysées, les plus prometteuses d'abord."""
+    cutoff = (date.today() - timedelta(days=AI_QUEUE_DAYS)).isoformat()
+    todo = [o for o in offers if o["active"] and o["id"] not in ai and o["first_seen"] >= cutoff]
+    todo.sort(key=lambda o: o["score"], reverse=True)
+    return [{
+        "id": o["id"], "title": o["title"], "company": o.get("company"),
+        "location": o.get("location"), "country": o.get("country"), "source": o["source"],
+        "lang": o.get("lang"), "rate": format_rate(o) or None, "duration": o.get("duration"),
+        "text": texts.get(o["id"]) or o.get("snippet") or "",
+    } for o in todo[:AI_QUEUE_MAX]]
 
 
 # --- Scrape ------------------------------------------------------------------------

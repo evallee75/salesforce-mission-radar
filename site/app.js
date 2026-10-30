@@ -282,6 +282,8 @@ function cardHtml(o) {
   if (o.duration_days && !o.short) tags.push(`<span class="tag">⏳ ${formatDuration(o.duration_days)}</span>`);
   if (o.remote) tags.push(`<span class="tag remote">🏠 ${esc(o.remote)}</span>`);
   if (o.zone !== 'France' && o.country) tags.push(`<span class="tag intl">${FLAGS[o.country] || '🌍'} ${esc(o.country)}</span>`);
+  if (o.ai?.seniority) tags.push(`<span class="tag">🎓 ${esc(o.ai.seniority)}</span>`);
+  (o.ai?.clouds || []).slice(0, 4).forEach((c) => tags.push(`<span class="tag cloud">${esc(c)}</span>`));
   if (o.client_final) tags.push('<span class="tag final">Client final</span>');
   else if (o.is_esn) tags.push('<span class="tag esn">ESN / cabinet</span>');
 
@@ -300,7 +302,8 @@ function cardHtml(o) {
       </div>
     </div>
     <div class="tags">${tags.join('')}</div>
-    ${o.snippet ? `<p class="snippet">${esc(o.snippet)}</p>` : ''}
+    ${o.ai?.summary ? `<p class="snippet ai" title="Résumé rédigé par Claude">✨ ${esc(o.ai.summary)}</p>`
+      : o.snippet ? `<p class="snippet">${esc(o.snippet)}</p>` : ''}
     <div class="card-foot">
       <span class="src">${esc(sourceLabel(o.source))}${also ? ' · aussi sur ' + also : ''}</span>
       <span class="spacer"></span>
@@ -309,7 +312,7 @@ function cardHtml(o) {
         ${STATUSES.map((s) => `<option value="${s.key}" ${status === s.key ? 'selected' : ''}>${s.icon} ${s.label}</option>`).join('')}
         <option value="${DISMISSED}" ${status === DISMISSED ? 'selected' : ''}>🙈 Écarter</option>
       </select>
-      <button class="btn" data-pitch="${esc(o.id)}" title="Copier un message d'approche personnalisé">✉️ Pitch</button>
+      <button class="btn" data-pitch="${esc(o.id)}" title="${o.ai?.pitch ? 'Copier le message rédigé par Claude pour cette annonce' : 'Copier un message d\'approche personnalisé'}">${o.ai?.pitch ? '✨' : '✉️'} Pitch</button>
       <a class="btn primary" href="${esc(o.url)}" target="_blank" rel="noopener">Voir ↗</a>
     </div>
   </article>`;
@@ -337,7 +340,7 @@ function setStatus(id, status) {
       status,
       updated: new Date().toISOString(),
       // Instantané de l'offre : le pipeline survit à l'expiration de l'annonce.
-      offer: { title: o.title, url: o.url, company: o.company, source: o.source, rate: formatRate(o), country: o.country, lang: o.lang, location: o.location },
+      offer: { title: o.title, url: o.url, company: o.company, source: o.source, rate: formatRate(o), country: o.country, lang: o.lang, location: o.location, pitch: o.ai?.pitch || o.pitch },
     };
   }
   store.set('radar.pipeline', pipeline);
@@ -423,7 +426,8 @@ function templates() { return { ...DEFAULT_TEMPLATES, ...store.get('radar.templa
 function copyPitch(id) {
   const o = offerById(id) || pipeline[id]?.offer;
   if (!o) return;
-  const tpl = templates()[o.lang === 'en' ? 'en' : 'fr'];
+  // Pitch rédigé par Claude pour cette annonce s'il existe, sinon le modèle générique.
+  const tpl = o.ai?.pitch || o.pitch || templates()[o.lang === 'en' ? 'en' : 'fr'];
   const text = tpl
     .replaceAll('{titre}', o.title || '')
     .replaceAll('{entreprise}', o.company || (o.lang === 'en' ? 'your company' : 'votre structure'))

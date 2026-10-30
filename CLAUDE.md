@@ -27,6 +27,14 @@ Ici : **site statique** sur GitHub Pages, données pré-calculées par GitHub Ac
 lues que pour les nouvelles. Sur LinkedIn, l'enrichissement s'arrête au 2e refus 429 et
 reprend au run suivant.
 
+## Analyse IA
+
+Routine Claude Code planifiée (abonnement, pas l'API) ~30 min après chaque scan : lit
+`data/ai_queue.json`, écrit `data/ai.json`, pousse → le workflow republie en
+`--publish-only`. Consignes : `ROUTINE.md`. `apply_ai` ne s'applique qu'aux copies
+publiées (`_publishable`), jamais à `data/state.json`. Textes complets dans
+`data/texts.json` (contacts masqués, purgés avec les offres).
+
 ## Pièges
 
 - Clé Algolia WTTJ publique mais susceptible d'être tournée (voir docstring de `wttj.py`).

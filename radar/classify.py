@@ -71,6 +71,34 @@ def classify(o: Dict, previous: Optional[Dict] = None) -> Dict:
     return o
 
 
+def apply_ai(o: Dict, ai: Optional[Dict]) -> None:
+    """Fusionne l'analyse de la routine IA (data/ai.json) : elle lit l'annonce en
+    entier et corrige les regex là où elles se trompent (format, client final…)."""
+    if not ai:
+        o.pop("ai", None)
+        return
+    o["ai"] = {k: ai.get(k) for k in ("summary", "seniority", "clouds", "pitch") if ai.get(k)}
+    fmt = ai.get("format")
+    if fmt == "courte":
+        o["short"] = True
+        o["short_reason"] = o.get("short_reason") or "selon l'analyse IA"
+    elif fmt in ("longue", "temps_partiel") and not o.get("gig"):
+        o["short"] = False
+        o["short_reason"] = None
+    dpw = ai.get("days_per_week")
+    if fmt == "temps_partiel" or (dpw and dpw < 5):
+        o["part_time"] = f"{dpw:g} j/sem" if dpw and dpw < 5 else (o.get("part_time") or "Temps partiel")
+    elif dpw and dpw >= 5:
+        o["part_time"] = None   # l'IA a lu un temps plein : on corrige un faux positif regex
+    if ai.get("duration_days"):
+        o["duration_days"] = ai["duration_days"]
+    if ai.get("end_client") is not None and o.get("company"):
+        o["client_final"] = bool(ai["end_client"])
+        o["is_esn"] = not ai["end_client"]
+    o["ai_irrelevant"] = ai.get("salesforce_relevant") is False
+    o["score"], o["reasons"] = _score(o)
+
+
 def _score(o: Dict):
     points: List[tuple] = []
     if o.get("sf_title"):
@@ -124,6 +152,9 @@ def _score(o: Dict):
         points.append((4, "hybride"))
     if o.get("confirmed_freelance"):
         points.append((7, "freelance confirmé"))
+
+    if o.get("ai_irrelevant"):
+        points.append((-40, "peu de Salesforce selon l'analyse IA"))
 
     return max(0, min(100, sum(p for p, _ in points))), [r for _, r in points]
 

@@ -7,11 +7,13 @@ on:
     - cron: "15 5 * * *"
     - cron: "15 12 * * *"
   workflow_dispatch:      # lancement manuel depuis l'onglet Actions
-  push:                   # modif du front => redéploiement sans re-scanner
+  push:                   # front modifié ou analyses IA poussées => republication sans re-scanner
     branches: [main]
     paths:
       - "site/**"
       - "!site/data/**"
+      - "data/ai.json"
+      - "radar/**"
       - ".github/workflows/radar.yml"
 
 permissions:
@@ -25,7 +27,6 @@ concurrency:
 
 jobs:
   scan:
-    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -39,7 +40,12 @@ jobs:
       - name: Installer les dépendances
         run: pip install -r requirements.txt
 
+      - name: Republier avec les analyses IA (sans scanner)
+        if: github.event_name == 'push'
+        run: python -m radar --publish-only
+
       - name: Scanner les sources et régénérer les données
+        if: github.event_name != 'push'
         env:
           # Email optionnel : sans SMTP_PASSWORD, rien n'est envoyé (le site suffit).
           SMTP_USER: ${{ secrets.SMTP_USER }}
@@ -52,14 +58,14 @@ jobs:
           git config user.name "radar-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data site/data site/feed.xml site/feed-courtes.xml
-          git commit -m "Données : scan du $(date -u +'%Y-%m-%d %H:%M') UTC" || echo "Aucun changement"
+          label=$([ "${{ github.event_name }}" = "push" ] && echo "republication" || echo "scan")
+          git commit -m "Données : $label du $(date -u +'%Y-%m-%d %H:%M') UTC" || echo "Aucun changement"
           git pull --rebase
           git push
 
   deploy:
     needs: scan
-    # Tourne après un scan réussi, ou seul quand le scan est sauté (push du front).
-    if: always() && (needs.scan.result == 'success' || needs.scan.result == 'skipped')
+    if: needs.scan.result == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

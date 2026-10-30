@@ -25,6 +25,10 @@ boards classiques.
 - **Vivier entreprises** : qui publie, combien, à quel TJM médian, client final ou ESN,
   avec des liens directs pour trouver les décideurs sur LinkedIn. Export CSV. L'historique
   n'est jamais purgé.
+- **Analyse IA (Claude)** : une routine Claude Code planifiée lit chaque nouvelle annonce
+  en entier, corrige la classification (format réel, client final ou ESN), ajoute un
+  résumé ✨, la séniorité et les produits Salesforce demandés, et **rédige un pitch
+  spécifique à l'annonce**. Les consignes sont dans [`ROUTINE.md`](ROUTINE.md).
 - **Alertes** : flux RSS ([toutes](https://evallee75.github.io/salesforce-mission-radar/feed.xml),
   [courtes et partielles](https://evallee75.github.io/salesforce-mission-radar/feed-courtes.xml))
   et email optionnel.

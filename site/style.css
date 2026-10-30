@@ -148,6 +148,8 @@ button, select, input, textarea { font: inherit; color: inherit; }
 .tag.part { background: #ecfdf5; color: #047857; }
 .tag.intl { background: #eef2ff; color: #4338ca; }
 .tag.remote { background: #f1f5f9; color: #475569; }
+.tag.cloud { background: #eff6ff; color: #1d4ed8; }
+.snippet.ai { color: #334155; }
 .tag.final { background: #f0fdf4; color: #15803d; }
 .tag.esn { background: #f3f4f6; color: #6b7280; }
 .tag.new { background: linear-gradient(120deg, var(--brand-2), var(--green)); color: #fff; }
