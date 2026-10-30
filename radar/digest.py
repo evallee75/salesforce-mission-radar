@@ -55,13 +55,13 @@ def _html(offers: List[Dict], site_url: str) -> str:
         meta = " · ".join(x for x in (o.get("company"), o.get("location"), o["source"]) if x)
         rows.append(
             f'<tr><td style="padding:12px 0;border-bottom:1px solid #eee">'
-            f'<span style="background:#7c3aed;color:#fff;border-radius:10px;padding:2px 8px;'
+            f'<span style="background:#0369a1;color:#fff;border-radius:10px;padding:2px 8px;'
             f'font-size:12px;font-weight:700">{o["score"]}</span> '
             f'<a href="{escape(o["url"])}" style="font-size:15px;font-weight:700;color:#111827;'
             f'text-decoration:none">{escape(o["title"])}</a><br>'
             f'<span style="font-size:13px;color:#6b7280">{escape(meta)}</span><br>'
-            f'<span style="font-size:13px;color:#7c3aed">{escape(" · ".join(tags))}</span></td></tr>')
+            f'<span style="font-size:13px;color:#0369a1">{escape(" · ".join(tags))}</span></td></tr>')
     link = f'<p><a href="{escape(site_url)}">Ouvrir le radar →</a></p>' if site_url else ""
     return (f'<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:640px;margin:auto">'
-            f'<h2 style="color:#7c3aed">{len(offers)} nouvelle(s) mission(s) Salesforce</h2>'
+            f'<h2 style="color:#0369a1">{len(offers)} nouvelle(s) mission(s) Salesforce</h2>'
             f'{link}<table style="width:100%;border-collapse:collapse">{"".join(rows)}</table>{link}</div>')

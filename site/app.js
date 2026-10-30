@@ -262,10 +262,10 @@ function render() {
 }
 
 function scoreColor(score) {
-  if (score >= 70) return '#db2777';
-  if (score >= 55) return '#7c3aed';
-  if (score >= 40) return '#4f46e5';
-  return '#9ca3af';
+  if (score >= 70) return '#059669';
+  if (score >= 55) return '#0284c7';
+  if (score >= 40) return '#1d4ed8';
+  return '#94a3b8';
 }
 
 function cardHtml(o) {
