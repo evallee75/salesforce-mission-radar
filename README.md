@@ -1,6 +1,6 @@
 # 🎯 Salesforce Mission Radar
 
-**Les missions freelance Salesforce du jour, au même endroit, triées par intérêt business.**
+**Les missions freelance Salesforce du jour, au même endroit, triées de la plus récente à la plus ancienne.**
 France, Europe, international, et surtout les **missions courtes et à temps partiel**
 (quelques jours par-ci par-là, TMA, renfort ponctuel), qui sont noyées dans les job
 boards classiques.
