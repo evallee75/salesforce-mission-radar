@@ -104,6 +104,22 @@ function formatDuration(days) {
   return `${Math.round(days / 365)} an${days >= 730 ? 's' : ''}`;
 }
 
+// Moment de publication estimé par le scan (posted_at) ; repli pour les anciennes données.
+function postedTime(o) {
+  const iso = o.posted_at || o.published_at || o.published || o.first_seen;
+  return iso ? new Date(iso).getTime() : 0;
+}
+
+// Ancienneté affichée sur la carte : à l'heure près quand la source donne l'heure.
+function postedAgo(o) {
+  if (o.published_at) {
+    const hours = Math.floor((Date.now() - new Date(o.published_at)) / 36e5);
+    if (hours < 1) return "à l'instant";
+    if (hours < 24) return `il y a ${hours} h`;
+  }
+  return ago(o.published || o.first_seen);
+}
+
 function ago(iso) {
   if (!iso) return '';
   const days = Math.floor((Date.now() - new Date(iso.slice(0, 10))) / 864e5);
@@ -238,10 +254,9 @@ function filteredOffers() {
     return true;
   });
 
-  // Tri chronologique, toutes sources confondues : date de publication, puis première détection, puis score
-  const cmp = (x, y) => (x > y ? 1 : x < y ? -1 : 0);
-  rows.sort((a, b) => cmp(b.published || b.first_seen.slice(0, 10), a.published || a.first_seen.slice(0, 10))
-    || cmp(b.first_seen, a.first_seen) || b.score - a.score);
+  // Tri chronologique strict, quels que soient l'onglet et les filtres : la plus
+  // récemment publiée d'abord, toutes sources confondues (score en départage).
+  rows.sort((a, b) => postedTime(b) - postedTime(a) || b.score - a.score);
   return rows;
 }
 
@@ -253,7 +268,7 @@ function render() {
   const rows = filteredOffers();
   const shown = rows.slice(0, state.limit);
   const newCount = rows.filter(isNew).length;
-  $('resultLine').textContent = `${rows.length} mission(s)` +
+  $('resultLine').textContent = `${rows.length} mission(s), de la plus récente à la plus ancienne` +
     (newCount ? ` · ${newCount} nouvelle(s) depuis ta dernière visite` : '');
   $('grid').innerHTML = shown.length ? shown.map(cardHtml).join('') :
     '<div class="empty"><b>🔭</b>Aucune mission avec ces filtres. Élargis la recherche ou repasse demain : le radar tourne chaque jour.</div>';
@@ -297,7 +312,7 @@ function cardHtml(o) {
            title="Score d'opportunité ${o.score}/100\n${esc(reasons)}"></div>
       <div>
         <h3 class="title"><a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.title)}</a></h3>
-        <div class="sub"><b>${esc(o.company || 'Société non précisée')}</b>${where ? ' · ' + esc(where) : ''} · ${ago(o.published || o.first_seen)}</div>
+        <div class="sub"><b>${esc(o.company || 'Société non précisée')}</b>${where ? ' · ' + esc(where) : ''} · ${postedAgo(o)}</div>
       </div>
     </div>
     <div class="tags">${tags.join('')}</div>

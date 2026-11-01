@@ -23,6 +23,11 @@ Ici : **site statique** sur GitHub Pages, données pré-calculées par GitHub Ac
 `data/state.json` (first_seen horodaté, last_seen = date) → purge `retention_days` →
 `data/companies.json` (vivier, jamais purgé) → `site/data/*.json` + flux RSS.
 
+Ordre d'affichage : partout du plus récent au plus ancien, sur `posted_at` (calculé dans
+`_publishable`) : heure réelle `published_at` quand la source la donne (FreeWork, Jobgether,
+freelancermap, Freelancer, Remote OK, Codeur), sinon heure de détection si publiée le jour
+même, sinon midi du jour de publication. LinkedIn, WTTJ, Hellowork, PPH : date seule.
+
 `known_ids` = offres déjà enrichies (`enriched`) : les pages détail (coûteuses) ne sont
 lues que pour les nouvelles. Sur LinkedIn, l'enrichissement s'arrête au 2e refus 429 et
 reprend au run suivant.

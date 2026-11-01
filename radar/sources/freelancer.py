@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 from ..models import Offer
-from ..text import clean_html, is_salesforce, to_eur
+from ..text import clean_html, is_salesforce, to_eur, to_utc_timestamp
 from .base import Source
 
 _API = "https://www.freelancer.com/api/projects/0.1/projects/active/"
@@ -64,6 +64,7 @@ class FreelancerSource(Source):
             budget=budget_label,
             budget_eur=budget_eur,
             published=published,
+            published_at=to_utc_timestamp(submitted if isinstance(submitted, (int, float)) else None),
             skills=skills[:8],
             snippet=clean_html(desc, 280),
             contract="Projet",

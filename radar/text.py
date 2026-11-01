@@ -10,7 +10,8 @@ from __future__ import annotations
 import html
 import re
 import unicodedata
-from typing import Optional, Tuple
+from datetime import datetime, timezone
+from typing import Optional, Tuple, Union
 
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -387,3 +388,32 @@ def zone_of(country: Optional[str], remote: Optional[str]) -> str:
     if country:
         return "Monde"
     return "Remote" if remote == "Full remote" else "France"
+
+
+def to_utc_timestamp(value: Union[str, int, float, datetime, None]) -> Optional[str]:
+    """Horodatage de publication normalisé en UTC (« 2026-11-01T09:30:00Z »).
+
+    Accepte un ISO 8601 avec heure (offset, « Z », millisecondes), un timestamp Unix
+    ou un datetime. Renvoie None si la valeur n'a pas d'heure : une simple date ne
+    permet pas de trier à l'intérieur d'une journée. Une heure sans fuseau est lue en UTC.
+    """
+    if value is None or value == "":
+        return None
+    try:
+        if isinstance(value, datetime):
+            dt = value
+        elif isinstance(value, (int, float)):
+            dt = datetime.fromtimestamp(value / 1000 if value > 1e11 else value, tz=timezone.utc)
+        else:
+            raw = str(value).strip()
+            if not re.match(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}", raw):
+                return None
+            raw = raw.replace(" ", "T", 1).replace("Z", "+00:00")
+            raw = re.sub(r"(\.\d+)", "", raw)                       # millisecondes
+            raw = re.sub(r"([+-]\d{2})(\d{2})$", r"\1:\2", raw)     # +0100 → +01:00
+            dt = datetime.fromisoformat(raw)
+    except (ValueError, OverflowError, OSError):
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

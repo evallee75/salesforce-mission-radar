@@ -12,7 +12,7 @@ from typing import Dict, List, Optional
 from bs4 import BeautifulSoup
 
 from ..models import Offer
-from ..text import clean_html, country_from_iso, detect_country, is_salesforce_offer
+from ..text import clean_html, country_from_iso, detect_country, is_salesforce_offer, to_utc_timestamp
 from .base import Source
 
 _SEARCH = "https://www.freelancermap.com/projects"
@@ -51,6 +51,7 @@ class FreelancermapSource(Source):
                     "Hybride" if remote_pct else "Sur site" if remote_pct == 0 else None),
             duration=p.get("durationText") or None,
             published=(p.get("created") or "")[:10] or None,
+            published_at=to_utc_timestamp(p.get("created")),
             snippet=clean_html(desc, 280),
             contract="Freelance",
             confirmed_freelance=True,

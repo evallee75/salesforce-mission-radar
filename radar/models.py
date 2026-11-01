@@ -23,6 +23,7 @@ class Offer:
     duration_days: Optional[int] = None      # durée estimée en jours calendaires
     part_time: Optional[str] = None          # "2 j/sem", "Temps partiel"…
     published: Optional[str] = None          # date ISO YYYY-MM-DD
+    published_at: Optional[str] = None       # horodatage UTC si la source donne l'heure
     skills: List[str] = field(default_factory=list)
     snippet: Optional[str] = None            # extrait court (affiché)
     contract: Optional[str] = None           # "Freelance" | "Contrat" | "Projet"

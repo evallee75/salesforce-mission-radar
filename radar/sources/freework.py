@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Dict, List, Optional
 
 from ..models import Offer
-from ..text import clean_html, country_from_iso
+from ..text import clean_html, country_from_iso, to_utc_timestamp
 from .base import Source
 
 _API = "https://api.free-work.com/job_postings"
@@ -67,6 +67,7 @@ class FreeWorkSource(Source):
             tjm_max=_int(m.get("maxDailySalary")),
             duration=duration,
             published=(m.get("publishedAt") or "")[:10] or None,
+            published_at=to_utc_timestamp(m.get("publishedAt")),
             skills=[s["name"] for s in (m.get("skills") or []) if s.get("name")][:10],
             snippet=clean_html(m.get("description"), 280),
             contract="Freelance",

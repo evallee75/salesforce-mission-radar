@@ -16,7 +16,7 @@ from typing import Dict, List, Optional
 from bs4 import BeautifulSoup
 
 from ..models import Offer
-from ..text import clean_html, detect_country, is_salesforce, looks_freelance
+from ..text import clean_html, detect_country, is_salesforce, looks_freelance, to_utc_timestamp
 from .base import Source
 
 _SEARCH = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
@@ -84,6 +84,7 @@ class LinkedInSource(Source):
             location=location,
             country=detect_country(location) or detect_country(searched_location),
             published=(time_el.get("datetime") or "")[:10] or None if time_el else None,
+            published_at=to_utc_timestamp(time_el.get("datetime")) if time_el else None,
             contract="Contrat",
             confirmed_freelance=looks_freelance(title),
             text=title,

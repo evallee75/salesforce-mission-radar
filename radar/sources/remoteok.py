@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Dict, List, Optional
 
 from ..models import Offer
-from ..text import clean_html, detect_country, is_salesforce, looks_freelance
+from ..text import clean_html, detect_country, is_salesforce, looks_freelance, to_utc_timestamp
 from .base import Source
 
 _API = "https://remoteok.com/api"
@@ -41,6 +41,7 @@ class RemoteOkSource(Source):
             country=detect_country(m.get("location")),
             remote="Full remote",
             published=(m.get("date") or "")[:10] or None,
+            published_at=to_utc_timestamp(m.get("date")),
             skills=[t for t in (m.get("tags") or []) if isinstance(t, str)][:8],
             snippet=clean_html(desc, 280),
             contract="Freelance" if looks_freelance(f"{title} {desc}") else "Remote",

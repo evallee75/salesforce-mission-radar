@@ -13,7 +13,7 @@ from typing import Dict, List
 from bs4 import BeautifulSoup
 
 from ..models import Offer
-from ..text import clean_html, is_salesforce_offer
+from ..text import clean_html, is_salesforce_offer, to_utc_timestamp
 from .base import Source
 
 _RSS = "https://www.codeur.com/projects.rss"
@@ -36,9 +36,10 @@ class CodeurSource(Source):
                 continue
             budget = _BUDGET.search(desc)
             try:
-                published = parsedate_to_datetime(item.pubDate.get_text()).date().isoformat()
+                pub_dt = parsedate_to_datetime(item.pubDate.get_text())
+                published, published_at = pub_dt.date().isoformat(), to_utc_timestamp(pub_dt)
             except (AttributeError, TypeError, ValueError):
-                published = None
+                published = published_at = None
             out.append(Offer(
                 id=f"codeur:{item.guid.get_text(strip=True) if item.guid else item.link.get_text()}",
                 source=self.name,
@@ -49,6 +50,7 @@ class CodeurSource(Source):
                 remote="Full remote",
                 budget=f"Forfait {budget.group(1).strip()}" if budget else None,
                 published=published,
+                published_at=published_at,
                 snippet=clean_html(desc, 280),
                 contract="Projet",
                 confirmed_freelance=True,

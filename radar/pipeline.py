@@ -24,7 +24,8 @@ from . import companies
 from .classify import apply_ai, classify
 from .feed import format_rate, write_feed
 from .sources import REGISTRY, get_source
-from .text import is_permanent, is_salesforce_offer, scrub_contacts, strip_accents_lower
+from .text import (is_permanent, is_salesforce_offer, scrub_contacts, strip_accents_lower,
+                   to_utc_timestamp)
 
 log = logging.getLogger("radar.pipeline")
 
@@ -90,7 +91,7 @@ def run(publish_only: bool = False) -> dict:
         o["first_seen"] = prev["first_seen"] if prev else now
         o["last_seen"] = today
         if prev:
-            for k in ("snippet", "remote", "duration", "company", "published", "skills"):
+            for k in ("snippet", "remote", "duration", "company", "published", "published_at", "skills"):
                 o[k] = o.get(k) or prev.get(k)
         else:
             new_ids.append(o["id"])
@@ -116,7 +117,7 @@ def run(publish_only: bool = False) -> dict:
     ai = _read_json(AI_PATH, {})
     for o in offers:
         apply_ai(o, ai.get(o["id"]))
-    offers.sort(key=lambda o: (o["active"], o["score"], o.get("published") or ""), reverse=True)
+    offers.sort(key=chrono_key, reverse=True)
     texts = {k: v for k, v in texts.items() if k in state}
     _write_json(AI_QUEUE_PATH, _ai_queue(offers, ai, texts))
     meta = {
@@ -220,15 +221,39 @@ def _publishable(offers) -> List[dict]:
         best["also_on"] = [{"source": g["source"], "url": g["url"]} for g in group[1:]
                            if g["source"] != best["source"]]
         # Une info manquante sur la source prioritaire peut venir d'un doublon.
-        for k in ("tjm_min", "tjm_max", "company", "remote", "duration_days", "part_time"):
+        for k in ("tjm_min", "tjm_max", "company", "remote", "duration_days", "part_time",
+                  "published", "published_at"):
             if not best.get(k):
                 best[k] = next((g[k] for g in group[1:] if g.get(k)), best.get(k))
         best["first_seen"] = min(g["first_seen"] for g in group)
         last_seen = max(g["last_seen"] for g in group)
         best["active"] = (today - date.fromisoformat(last_seen)).days <= ACTIVE_DAYS
+        best["posted_at"] = posted_at(best)
         out.append(best)
-    out.sort(key=lambda o: (o["active"], o["score"], o.get("published") or ""), reverse=True)
+    out.sort(key=chrono_key, reverse=True)
     return out
+
+
+def posted_at(o: dict) -> str:
+    """Moment de publication estimé (UTC), clé du tri « plus récent d'abord ».
+
+    Heure réelle si la source la donne ; sinon, pour une annonce publiée le jour où
+    on l'a vue (ou sans date), l'heure de détection ; sinon le milieu de la journée
+    de publication. Jamais postérieur à la détection.
+    """
+    seen = to_utc_timestamp(o["first_seen"]) or o["first_seen"]
+    pub = o.get("published")
+    if o.get("published_at"):
+        guess = o["published_at"]
+    elif not pub or pub >= seen[:10]:
+        guess = seen
+    else:
+        guess = f"{pub}T12:00:00Z"
+    return min(guess, seen)
+
+
+def chrono_key(o: dict) -> Tuple[str, int]:
+    return (o.get("posted_at") or posted_at(o), o.get("score", 0))
 
 
 # --- Vivier entreprises (jamais purgé) -------------------------------------------------

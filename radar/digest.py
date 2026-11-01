@@ -30,7 +30,8 @@ def send_digest(offers: List[Dict], new_ids, site_url: str) -> None:
     if not fresh:
         log.info("Aucune nouvelle mission au-dessus de %d : pas d'email.", min_score)
         return
-    fresh.sort(key=lambda o: o["score"], reverse=True)
+    # Même ordre que le site : du plus récent au plus ancien.
+    fresh.sort(key=lambda o: (o.get("posted_at") or o["first_seen"], o["score"]), reverse=True)
     user = os.environ["SMTP_USER"]
     msg = MIMEText(_html(fresh, site_url), "html", "utf-8")
     short = sum(1 for o in fresh if o.get("short") or o.get("part_time"))

@@ -14,7 +14,7 @@ from typing import Dict, List, Optional
 from bs4 import BeautifulSoup
 
 from ..models import Offer
-from ..text import EUROPE, clean_html, detect_country, strip_accents_lower
+from ..text import EUROPE, clean_html, detect_country, strip_accents_lower, to_utc_timestamp
 from .base import Source
 
 _API = "https://jobgether.com/astroapi/offer/search"
@@ -70,6 +70,7 @@ class JobgetherSource(Source):
             country=detect_country(location),
             remote="Full remote",
             published=(m.get("createdAt") or "")[:10] or None,
+            published_at=to_utc_timestamp(m.get("createdAt")),
             skills=skills[:8],
             contract="Freelance",
             confirmed_freelance=True,
