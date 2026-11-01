@@ -238,11 +238,10 @@ function filteredOffers() {
     return true;
   });
 
-  if (state.tab === 'all') {
-    rows.sort((a, b) => (b.active - a.active) || (b.first_seen > a.first_seen ? 1 : -1));
-  } else {
-    rows.sort((a, b) => b.score - a.score || (b.first_seen > a.first_seen ? 1 : -1));
-  }
+  // Tri chronologique, toutes sources confondues : date de publication, puis première détection, puis score
+  const cmp = (x, y) => (x > y ? 1 : x < y ? -1 : 0);
+  rows.sort((a, b) => cmp(b.published || b.first_seen.slice(0, 10), a.published || a.first_seen.slice(0, 10))
+    || cmp(b.first_seen, a.first_seen) || b.score - a.score);
   return rows;
 }
 
