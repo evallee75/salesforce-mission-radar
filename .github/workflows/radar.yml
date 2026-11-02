@@ -2,10 +2,10 @@ name: Radar quotidien
 
 on:
   schedule:
-    # Deux passages par jour : être parmi les premiers à répondre compte beaucoup
-    # sur les missions courtes. Heures UTC (= 6h15 et 13h15 à Paris en hiver).
-    - cron: "15 5 * * *"
-    - cron: "15 12 * * *"
+    # Toutes les 2 h de 6h à 22h (Paris, hiver) : être parmi les premiers à répondre compte
+    # beaucoup sur les missions courtes. Heures UTC. Minute décalée (:37) car GitHub retarde,
+    # voire saute, les crons calés sur :00/:15 aux heures de pointe.
+    - cron: "37 5-21/2 * * *"
   workflow_dispatch:      # lancement manuel depuis l'onglet Actions
   push:                   # front modifié ou analyses IA poussées => republication sans re-scanner
     branches: [main]

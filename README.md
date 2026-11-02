@@ -9,7 +9,7 @@ boards classiques.
 
 ## Ce que fait le radar
 
-- **Scanne 10 sources** deux fois par jour (GitHub Actions) et dédoublonne les annonces
+- **Scanne 10 sources** toutes les 2 heures de 6h à 22h (GitHub Actions) et dédoublonne les annonces
   publiées sur plusieurs sites.
 - **Détecte les formats qui rapportent** : missions courtes (durée ≤ 45 j, « quelques
   jours », « ponctuel », « short-term »…), temps partiel (« 2 j/sem », « part-time »…),
@@ -104,5 +104,5 @@ site/             front statique publié sur GitHub Pages
 
 Le radar ne collecte que des annonces publiques, renvoie toujours vers l'annonce
 d'origine et ne republie **aucune donnée personnelle** : pas d'email ni de téléphone
-de recruteur. Le rythme des requêtes reste modeste (2 scans par jour, pauses entre les
+de recruteur. Le rythme des requêtes reste modeste (un scan toutes les 2 heures en journée, pauses entre les
 pages).
