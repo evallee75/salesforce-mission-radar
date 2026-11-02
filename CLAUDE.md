@@ -45,3 +45,12 @@ publiées (`_publishable`), jamais à `data/state.json`. Textes complets dans
 - Clé Algolia WTTJ publique mais susceptible d'être tournée (voir docstring de `wttj.py`).
 - Codeur.com : le RSS ignore `search`, on filtre nous-mêmes (rendement faible, c'est normal).
 - Liste ESN (`companies._ESN_KNOWN`) curatée : à enrichir quand une ESN passe en « client final ».
+
+## Planification
+
+Cron GitHub `37 5-21/2 * * *` (toutes les 2 h, 6h-22h Paris) : GitHub le retarde souvent et
+le saute parfois. Filet de sécurité local : `scripts/watchdog.sh`, installé en copie dans
+`~/.local/bin/mission-radar-watchdog.sh` (launchd ne peut pas lire `~/Documents`), lancé toutes
+les 30 min par `~/Library/LaunchAgents/com.evallee.mission-radar-watchdog.plist` ; il déclenche
+un scan si aucun n'a démarré depuis 150 min. Log : `~/Library/Logs/mission-radar-watchdog.log`.
+Après modification du script, recopier dans `~/.local/bin`. Ne tourne que Mac allumé.
